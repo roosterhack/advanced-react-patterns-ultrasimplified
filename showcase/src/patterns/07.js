@@ -120,6 +120,10 @@ const useDOMRef = () => {
   return [DOMRef, setRef];
 };
 
+const callFnsInSequence = (...fns) => (...args) => {
+  fns.forEach((fn) => fn && fn(...args));
+};
+
 //custom hook for useClapState
 const useClapState = (initialState = INITIAL_STATE) => {
   const MaxUserClap = 50;
@@ -135,19 +139,21 @@ const useClapState = (initialState = INITIAL_STATE) => {
   }, [count, countTotal]);
 
   // Prop collection for click
-  const togglerProps = {
-    onClick: updateClapState,
+  const getTogglerProps = ({ onClick, ...otherProps } = {}) => ({
+    onClick: callFnsInSequence(updateClapState, onClick),
     'aria-pressed': clapState.isClicked,
-  };
+    ...otherProps,
+  });
   // Props collection for 'count
-  const counterProps = {
+  const getCounterProps = ({ ...otherProps }) => ({
     count,
     'aria-valumax': MaxUserClap,
     'aria-valuemin': 0,
     'aria-valuenow': count,
-  };
+    ...otherProps,
+  });
 
-  return { clapState, updateClapState, togglerProps, counterProps };
+  return { clapState, updateClapState, getTogglerProps, getCounterProps };
 };
 
 //custom useEffectAfterMount hook
@@ -213,8 +219,8 @@ const Usage = () => {
   const {
     clapState,
     updateClapState,
-    togglerProps,
-    counterProps,
+    getTogglerProps,
+    getCounterProps,
   } = useClapState();
   const { count, countTotal, isClicked } = clapState;
   const [{ clapRef, clapCountRef, clapTotalRef }, setRef] = useDOMRef();
@@ -229,10 +235,22 @@ const Usage = () => {
     animationTimeline.replay();
   }, [count]);
 
+  const handleClick = () => {
+    console.log('Clicked!');
+  };
+
   return (
-    <ClapContainer setRef={setRef} data-refkey="clapRef" {...togglerProps}>
+    <ClapContainer
+      setRef={setRef}
+      data-refkey="clapRef"
+      {...getTogglerProps({ onClick: handleClick, 'aria-pressed': false })}
+    >
       <ClapIcon isClicked={isClicked} />
-      <ClapCount setRef={setRef} data-refkey="clapCountRef" {...counterProps} />
+      <ClapCount
+        setRef={setRef}
+        data-refkey="clapCountRef"
+        {...getCounterProps()}
+      />
       <CountTotal
         countTotal={countTotal}
         setRef={setRef}
